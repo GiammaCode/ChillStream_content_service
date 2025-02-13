@@ -1,4 +1,4 @@
-# NETFILX_content_service
+# ChillStream content service
 ASEE Project, content service part.
 This project provides an API for managing contents and their associated actors.
 The service is built using Python, Flask, and MongoDB, leveraging a modular architecture for handling
