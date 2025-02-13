@@ -1,0 +1,24 @@
+version: "3.8"
+services:
+  content_service:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    depends_on:
+      - content_mongodb
+    networks: 
+      - shared_network
+
+  content_mongodb:
+    image: mongo:latest
+    container_name: content_mongodb
+    ports:
+      - "27017:27017"
+    networks:
+      - shared_network
+
+networks:
+  shared_network:
+    external: true
