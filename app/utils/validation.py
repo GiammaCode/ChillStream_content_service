@@ -17,7 +17,6 @@ def validate_film(data):
         data (dict): The data to validate.
 
     Required Fields:
-        - `filmId` (int): Unique identifier for the film.
         - `title` (str): Title of the film.
         - `actors` (str): Comma-separated list or a string representing actor IDs.
         - `release_year` (int): Year the film was released.
@@ -30,7 +29,6 @@ def validate_film(data):
             - (False, dict): If validation fails, with an error message.
     """
     required_fields = {
-        "filmId": int,
         "title": str,
         "actors": str,  # Can be a comma-separated string or list
         "release_year": int,

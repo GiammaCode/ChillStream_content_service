@@ -1,26 +1,5 @@
-"""
-API Blueprint for Film Management
-
-This module defines API routes for managing film-related operations, including
-retrieving, adding, updating, and deleting films.
-
-Blueprint:
-    - `films_bp`: A Flask Blueprint for film-related routes.
-
-Routes:
-    1. `GET /`: Retrieve a list of all films.
-    2. `POST /`: Add a new film to the database.
-    3. `GET /<int:filmId>`: Retrieve details of a specific film by its ID.
-    4. `PUT /<int:filmId>`: Update the details of a specific film by its ID.
-    5. `DELETE /<int:filmId>`: Delete a specific film by its ID.
-
-Dependencies:
-    - Flask: For routing and handling HTTP requests.
-    - pymongo: For database operations with MongoDB.
-    - utils.validation.validate_film: For validating film input data.
-"""
-
 from flask import Blueprint, request, jsonify
+from bson import ObjectId
 from services.db import mongo
 from utils.validation import validate_film
 
@@ -44,20 +23,12 @@ def get_films():
 def add_films():
     """
     Add new film(s) to the database.
-
-    Request Body:
-        JSON: A single film or a list of films (validated using `validate_film`).
-
-    Returns:
-        Response:
-            - 201: Success message if the film(s) are added.
-            - 400: Error message if validation fails.
     """
     data = request.json
 
-    # Check if the input is a list or a single object
     if isinstance(data, list):
         errors = []
+        inserted_ids = []
 
         for film in data:
             valid, error = validate_film(film)
@@ -65,159 +36,124 @@ def add_films():
                 errors.append({"film": film, "error": error})
                 continue
 
-            # Insert the film into the database
-            mongo.db.films.insert_one(film)
+            # Insert the film and get the generated _id
+            result = mongo.db.films.insert_one(film)
+            film["_id"] = str(result.inserted_id)  # Convert ObjectId to string
+            inserted_ids.append(film["_id"])
 
-            # Update each actor's films list
+            # Update actors with this film
             update_actors_with_film(film)
 
         if errors:
-            return jsonify({
-                "message": "Some films were not added",
-                "errors": errors
-            }), 400
+            return jsonify({"message": "Some films were not added", "errors": errors}), 400
 
-        return jsonify({"message": "Films added and actors updated successfully"}), 201
+        return jsonify({"message": "Films added successfully", "inserted_ids": inserted_ids}), 201
 
     # Handle a single film
     valid, error = validate_film(data)
     if not valid:
         return jsonify(error), 400
 
-    # Insert the film into the database
-    mongo.db.films.insert_one(data)
+    result = mongo.db.films.insert_one(data)
+    data["_id"] = str(result.inserted_id)
 
-    # Update each actor's films list
     update_actors_with_film(data)
 
-    return jsonify({"message": "Film added and actors updated successfully"}), 201
+    return jsonify({"message": "Film added successfully", "film_id": data["_id"]}), 201
 
 def update_actors_with_film(film):
     """
     Update the films list for each actor involved in the film.
-
-    Args:
-        film (dict): The film data, including the "actors" field.
     """
     actor_ids = film.get("actors", [])
 
-    # Handle actors provided as a comma-separated string
     if isinstance(actor_ids, str):
-        actor_ids = [int(actor_id.strip()) for actor_id in actor_ids.split(",")]
+        actor_ids = [actor_id.strip() for actor_id in actor_ids.split(",")]
 
     for actor_id in actor_ids:
-        actor = mongo.db.actors.find_one({"actorId": actor_id})
+        actor = mongo.db.actors.find_one({"actorId": int(actor_id)})
         if actor:
             existing_films = actor.get("films", "").split(", ")
-            if str(film["filmId"]) not in existing_films:
-                updated_films = ", ".join(filter(None, [str(film["filmId"])] + existing_films))
+            if str(film["_id"]) not in existing_films:
+                updated_films = ", ".join(filter(None, [str(film["_id"])] + existing_films))
                 mongo.db.actors.update_one(
-                    {"actorId": actor_id},
+                    {"actorId": int(actor_id)},
                     {"$set": {"films": updated_films}}
                 )
 
-@films_bp.route("/<int:filmId>", methods=["GET"])
-def get_film(filmId):
+@films_bp.route("/<string:film_id>", methods=["GET"])
+def get_film(film_id):
     """
-    Retrieve details of a specific film by its filmId.
-
-    Args:
-        filmId (int): The unique ID of the film.
-
-    Returns:
-        Response:
-            - 200: Film details if found.
-            - 404: Error message if the film is not found.
+    Retrieve details of a specific film by its MongoDB _id.
     """
-    film = mongo.db.films.find_one({"filmId": filmId})
-    if film:
-        film["_id"] = str(film["_id"])
-        return jsonify(film), 200
-    return jsonify({"error": "Film not found"}), 404
+    try:
+        film = mongo.db.films.find_one({"_id": ObjectId(film_id)})
+        if film:
+            film["_id"] = str(film["_id"])
+            return jsonify(film), 200
+        return jsonify({"error": "Film not found"}), 404
+    except:
+        return jsonify({"error": "Invalid Film ID"}), 400
 
-@films_bp.route("/<int:filmId>", methods=["PUT"])
-def update_film(filmId):
+@films_bp.route("/<string:film_id>", methods=["PUT"])
+def update_film(film_id):
     """
-    Update details of a specific film by its filmId.
-
-    Args:
-        filmId (int): The unique ID of the film.
-
-    Request Body:
-        JSON: Updated film details.
-
-    Returns:
-        Response:
-            - 200: Updated film details if successful.
-            - 404: Error message if the film is not found.
+    Update details of a specific film by its MongoDB _id.
     """
-    data = request.json
-    updated_film = mongo.db.films.find_one_and_update(
-        {"filmId": filmId},
-        {"$set": data},
-        return_document=True
-    )
-    if updated_film:
-        updated_film["_id"] = str(updated_film["_id"])
-        return jsonify(updated_film), 200
-    return jsonify({"error": "Film not found"}), 404
+    try:
+        data = request.json
+        updated_film = mongo.db.films.find_one_and_update(
+            {"_id": ObjectId(film_id)},
+            {"$set": data},
+            return_document=True
+        )
+        if updated_film:
+            updated_film["_id"] = str(updated_film["_id"])
+            return jsonify(updated_film), 200
+        return jsonify({"error": "Film not found"}), 404
+    except:
+        return jsonify({"error": "Invalid Film ID"}), 400
 
-@films_bp.route("/<int:filmId>", methods=["DELETE"])
-def delete_film(filmId):
+@films_bp.route("/<string:film_id>", methods=["DELETE"])
+def delete_film(film_id):
     """
-    Delete a specific film by its filmId.
-
-    Args:
-        filmId (int): The unique ID of the film.
-
-    Returns:
-        Response:
-            - 204: No content if deletion is successful.
-            - 404: Error message if the film is not found.
+    Delete a specific film by its MongoDB _id.
     """
-    result = mongo.db.films.delete_one({"filmId": filmId})
-    if result.deleted_count > 0:
-        return "", 204
-    return jsonify({"error": "Film ID not found"}), 404
+    try:
+        result = mongo.db.films.delete_one({"_id": ObjectId(film_id)})
+        if result.deleted_count > 0:
+            return "", 204
+        return jsonify({"error": "Film not found"}), 404
+    except:
+        return jsonify({"error": "Invalid Film ID"}), 400
 
-@films_bp.route("/<int:filmId>/actors", methods=["GET"])
-def get_actors_by_film(filmId):
+@films_bp.route("/<string:film_id>/actors", methods=["GET"])
+def get_actors_by_film(film_id):
     """
     Retrieve a list of actors associated with a specific film.
-
-    Args:
-        filmId (int): The unique ID of the film.
-
-    Returns:
-        Response:
-            - 200: List of associated actors if successful.
-            - 400: Error message if the actor ID format is invalid.
-            - 404: Error message if the film is not found.
     """
-    # Trova il film corrispondente all'ID
-    film = mongo.db.films.find_one({"filmId": filmId})
-    if not film:
-        return jsonify({"error": "Film not found"}), 404
-
-    # Recupera gli ID degli attori dal film
-    actor_ids = film.get("actors", [])
-
-    # Se gli ID sono stringhe, separali e rimuovi gli spazi
-    if isinstance(actor_ids, str):
-        actor_ids = [id_.strip() for id_ in actor_ids.split(",")]
-
     try:
-        # Converti gli ID in formato integer
-        actor_ids = [int(actor_id) for actor_id in actor_ids if actor_id.isdigit()]
-    except ValueError:
-        return jsonify({"error": "Invalid actor ID format"}), 400
+        film = mongo.db.films.find_one({"_id": ObjectId(film_id)})
+        if not film:
+            return jsonify({"error": "Film not found"}), 404
 
-    if not actor_ids:
-        return jsonify({"actors": []}), 200
+        actor_ids = film.get("actors", [])
 
-    # Trova gli attori corrispondenti
-    actors = list(mongo.db.actors.find({"actorId": {"$in": actor_ids}}))
-    for actor in actors:
-        actor["_id"] = str(actor["_id"])  # Converti ObjectId in stringa per la serializzazione
+        if isinstance(actor_ids, str):
+            actor_ids = [id_.strip() for id_ in actor_ids.split(",")]
 
-    return jsonify({"filmId": filmId, "actors": actors}), 200
+        try:
+            actor_ids = [int(actor_id) for actor_id in actor_ids if actor_id.isdigit()]
+        except ValueError:
+            return jsonify({"error": "Invalid actor ID format"}), 400
+
+        if not actor_ids:
+            return jsonify({"actors": []}), 200
+
+        actors = list(mongo.db.actors.find({"actorId": {"$in": actor_ids}}))
+        for actor in actors:
+            actor["_id"] = str(actor["_id"])
+
+        return jsonify({"film_id": film_id, "actors": actors}), 200
+    except:
+        return jsonify({"error": "Invalid Film ID"}), 400
