@@ -24,8 +24,8 @@ Dependencies:
 """
 
 from flask import Blueprint, request, jsonify
-from services.db import mongo
-from utils.validation import validate_actor
+from app.services.db import mongo
+from app.utils.validation import validate_actor
 
 # Define the Blueprint
 actors_bp = Blueprint("actors", __name__)
