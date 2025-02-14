@@ -6,6 +6,7 @@ from utils.validation import validate_film
 # Define the Blueprint
 films_bp = Blueprint("films", __name__)
 
+
 @films_bp.route("/", methods=["GET"])
 def get_films():
     """
@@ -19,6 +20,7 @@ def get_films():
         film["_id"] = str(film["_id"])  # Convert ObjectId to string for serialization
     return jsonify(films), 200
 
+
 @films_bp.route("/", methods=["POST"])
 def add_films():
     """
@@ -26,60 +28,36 @@ def add_films():
     """
     data = request.json
 
-    if isinstance(data, list):
-        errors = []
-        inserted_ids = []
-
-        for film in data:
-            valid, error = validate_film(film)
-            if not valid:
-                errors.append({"film": film, "error": error})
-                continue
-
-            # Insert the film and get the generated _id
-            result = mongo.db.films.insert_one(film)
-            film["_id"] = str(result.inserted_id)  # Convert ObjectId to string
-            inserted_ids.append(film["_id"])
-
-            # Update actors with this film
-            update_actors_with_film(film)
-
-        if errors:
-            return jsonify({"message": "Some films were not added", "errors": errors}), 400
-
-        return jsonify({"message": "Films added successfully", "inserted_ids": inserted_ids}), 201
-
-    # Handle a single film
-    valid, error = validate_film(data)
-    if not valid:
-        return jsonify(error), 400
-
-    result = mongo.db.films.insert_one(data)
-    data["_id"] = str(result.inserted_id)
-
-    update_actors_with_film(data)
-
-    return jsonify({"message": "Film added successfully", "film_id": data["_id"]}), 201
-
-def update_actors_with_film(film):
-    """
-    Update the films list for each actor involved in the film.
-    """
-    actor_ids = film.get("actors", [])
-
-    if isinstance(actor_ids, str):
-        actor_ids = [actor_id.strip() for actor_id in actor_ids.split(",")]
-
-    for actor_id in actor_ids:
-        actor = mongo.db.actors.find_one({"actorId": int(actor_id)})
+    # Trova gli attori basandosi sul cognome e ottieni i loro ObjectId
+    actor_surnames = data.get("actors", [])
+    actor_ids = []
+    for surname in actor_surnames:
+        actor = mongo.db.actors.find_one({"surname": surname})
         if actor:
-            existing_films = actor.get("films", "").split(", ")
-            if str(film["_id"]) not in existing_films:
-                updated_films = ", ".join(filter(None, [str(film["_id"])] + existing_films))
-                mongo.db.actors.update_one(
-                    {"actorId": int(actor_id)},
-                    {"$set": {"films": updated_films}}
-                )
+            actor_ids.append(str(actor["_id"]))  # Convertiamo in stringa
+
+    # Creiamo il film
+    film_data = {
+        "title": data["title"],
+        "actors": actor_ids,  # Lista di ObjectId degli attori
+        "release_year": data["release_year"],
+        "genre": data["genre"],
+        "rating": data["rating"],
+        "description": data["description"],
+        "image_path": data["image_path"]
+    }
+
+    result = mongo.db.films.insert_one(film_data)
+    film_id = str(result.inserted_id)
+
+    # Aggiorniamo la lista dei film negli attori
+    for actor_id in actor_ids:
+        mongo.db.actors.update_one(
+            {"_id": ObjectId(actor_id)},
+            {"$push": {"films": film_id}}
+        )
+
+    return jsonify({"message": "Film added", "film_id": film_id}), 201
 
 @films_bp.route("/<string:film_id>", methods=["GET"])
 def get_film(film_id):
@@ -94,6 +72,7 @@ def get_film(film_id):
         return jsonify({"error": "Film not found"}), 404
     except:
         return jsonify({"error": "Invalid Film ID"}), 400
+
 
 @films_bp.route("/<string:film_id>", methods=["PUT"])
 def update_film(film_id):
@@ -114,6 +93,7 @@ def update_film(film_id):
     except:
         return jsonify({"error": "Invalid Film ID"}), 400
 
+
 @films_bp.route("/<string:film_id>", methods=["DELETE"])
 def delete_film(film_id):
     """
@@ -126,6 +106,7 @@ def delete_film(film_id):
         return jsonify({"error": "Film not found"}), 404
     except:
         return jsonify({"error": "Invalid Film ID"}), 400
+
 
 @films_bp.route("/<string:film_id>/actors", methods=["GET"])
 def get_actors_by_film(film_id):

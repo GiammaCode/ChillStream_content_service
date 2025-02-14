@@ -4,20 +4,20 @@ class Film:
 
     Attributes:
         title (str): Title of the film.
-        actors (list or str): List of actor IDs or a string containing comma-separated actor IDs.
+        actors (list): A list of actor surnames.
         release_year (int): Year the film was released.
         genre (str): Genre of the film (e.g., 'Drama', 'Action').
         rating (float): Rating of the film (e.g., IMDb or other rating systems).
     """
 
-    def __init__(self, film_id,title, actors, release_year, genre, rating, description, image_path):
+    def __init__(self, film_id, title, actors, release_year, genre, rating, description, image_path):
         """
         Initializes a Film object.
 
         Args:
             film_id (str or ObjectId, optional): The unique ID of the film from MongoDB. Defaults to None.
             title (str): The title of the film.
-            actors (list or str): A list of actor IDs or a string of comma-separated actor IDs.
+            actors (list): A list of actor surnames.
             release_year (int): The year the film was released.
             genre (str): The genre of the film.
             rating (float): The film's rating (e.g., IMDb rating).

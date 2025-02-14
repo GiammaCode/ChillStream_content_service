@@ -26,6 +26,7 @@ Dependencies:
 from flask import Blueprint, request, jsonify
 from services.db import mongo
 from utils.validation import validate_actor
+from bson import ObjectId
 
 # Define the Blueprint
 actors_bp = Blueprint("actors", __name__)
@@ -47,42 +48,27 @@ def get_actors():
 def add_actor():
     """
     Add a new actor to the database.
-
-    Request Body:
-        JSON: Actor details (validated using `validate_actor`).
-
-    Returns:
-        Response:
-            - 201: Success message if the actor is added.
-            - 400: Error message if validation fails.
     """
     data = request.json
 
-    # Controlla se il payload è un array
-    if isinstance(data, list):
-        errors = []
-        for actor in data:
-            valid, error = validate_actor(actor)
-            if not valid:
-                errors.append(error)
-                continue
-            mongo.db.actors.insert_one(actor)
+    # Controlla se l'attore esiste già con lo stesso cognome
+    existing_actor = mongo.db.actors.find_one({"surname": data["surname"]})
+    if existing_actor:
+        return jsonify({"error": "Actor with this surname already exists"}), 400
 
-        if errors:
-            return jsonify({"message": "Some actors were not added", "errors": errors}), 400
+    actor_data = {
+        "name": data["name"],
+        "surname": data["surname"],
+        "date_of_birth": data["date_of_birth"],
+        "films": []  # Lista vuota di film
+    }
 
-        return jsonify({"message": "Actors added successfully"}), 201
+    result = mongo.db.actors.insert_one(actor_data)
 
-    # Gestione di un singolo oggetto
-    valid, error = validate_actor(data)
-    if not valid:
-        return jsonify(error), 400
-
-    mongo.db.actors.insert_one(data)
-    return jsonify({"message": "Actor added successfully"}), 201
+    return jsonify({"message": "Actor added", "actor_id": str(result.inserted_id)}), 201
 
 @actors_bp.route("/<int:actorId>", methods=["GET"])
-def get_actor_by_id(actorId):
+def get_actor_by_id(actor_id):
     """
     Retrieve details of a specific actor by their actorId.
 
@@ -94,14 +80,14 @@ def get_actor_by_id(actorId):
             - 200: Actor details if found.
             - 404: Error message if the actor is not found.
     """
-    actor = mongo.db.actors.find_one({"actorId": actorId})
+    actor = mongo.db.actors.find_one({"actorId": actor_id})
     if actor:
         actor["_id"] = str(actor["_id"])
         return jsonify(actor), 200
     return jsonify({"error": "Actor not found"}), 404
 
 @actors_bp.route("/<int:actorId>", methods=["PUT"])
-def update_actor(actorId):
+def update_actor(actor_id):
     """
     Update details of a specific actor by their actorId.
 
@@ -118,7 +104,7 @@ def update_actor(actorId):
     """
     data = request.json
     updated_actor = mongo.db.actors.find_one_and_update(
-        {"actorId": actorId},
+        {"actorId": actor_id},
         {"$set": data},
         return_document=True
     )
@@ -128,7 +114,7 @@ def update_actor(actorId):
     return jsonify({"error": "Actor not found"}), 404
 
 @actors_bp.route("/<int:actorId>", methods=["DELETE"])
-def delete_actor(actorId):
+def delete_actor(actor_id):
     """
     Delete a specific actor by their actorId.
 
@@ -140,13 +126,13 @@ def delete_actor(actorId):
             - 204: No content if deletion is successful.
             - 404: Error message if the actor is not found.
     """
-    result = mongo.db.actors.delete_one({"actorId": actorId})
+    result = mongo.db.actors.delete_one({"actorId": actor_id})
     if result.deleted_count > 0:
         return "", 204
     return jsonify({"error": "Actor not found"}), 404
 
 @actors_bp.route("/<int:actorId>/films", methods=["GET"])
-def get_films_by_actor(actorId):
+def get_films_by_actor(actor_id):
     """
     Retrieve a list of films associated with a specific actor.
 
@@ -159,15 +145,11 @@ def get_films_by_actor(actorId):
             - 400: Error message if the film ID format is invalid.
             - 404: Error message if the actor is not found.
     """
-    actor = mongo.db.actors.find_one({"actorId": actorId})
-    if actor:
-        film_ids = actor.get("films", "").split(", ")
-        try:
-            film_ids = [int(film_id) for film_id in film_ids]
-        except ValueError:
-            return jsonify({"error": "Invalid film ID format"}), 400
-        films = list(mongo.db.films.find({"filmId": {"$in": film_ids}}))
-        for film in films:
-            film["_id"] = str(film["_id"])
-        return jsonify({"actorId": actorId, "films": films}), 200
-    return jsonify({"error": "Actor not found"}), 404
+    try:
+        actor = mongo.db.actors.find_one({"_id": ObjectId(actor_id)})
+        if actor:
+            actor["_id"] = str(actor["_id"])
+            return jsonify(actor), 200
+        return jsonify({"error": "Actor not found"}), 404
+    except:
+        return jsonify({"error": "Invalid Actor ID"}), 400
