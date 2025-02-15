@@ -1,33 +1,31 @@
 from flask import Blueprint, request, jsonify
 from bson import ObjectId
 from services.db import mongo
-from models.review import Review
 
-# Creazione del Blueprint per le recensioni
 reviews_bp = Blueprint("reviews", __name__)
 
-@reviews_bp.route("/films/<string:film_id>/reviews", methods=["GET"])
+
+@reviews_bp.route("/<string:film_id>/reviews", methods=["GET"])
 def get_reviews(film_id):
-    """
-    Retrieve all reviews for a specific film.
-
-    Args:
-        film_id (str): The unique ID of the film.
-
-    Returns:
-        Response: A JSON list of reviews or an error message.
-    """
     try:
-        reviews = list(mongo.db.reviews.find({"film_id": ObjectId(film_id)}))
-        for review in reviews:
-            review["_id"] = str(review["_id"])
-            review["film_id"] = str(review["film_id"])
-            review["profile_id"] = str(review["profile_id"])
-        return jsonify(reviews), 200
-    except:
-        return jsonify({"error": "Invalid Film ID"}), 400
+        film_object_id = ObjectId(film_id)
+    except Exception as e:
+        return jsonify({"error": "Invalid Film ID format"}), 400
 
-@reviews_bp.route("/films/<string:film_id>/reviews", methods=["POST"])
+    film = mongo.db.films.find_one({"_id": film_object_id})
+    if not film:
+        return jsonify({"error": "Film not found"}), 404
+
+    reviews = list(mongo.db.reviews.find({"film_id": film_id}))
+
+    for review in reviews:
+        review["_id"] = str(review["_id"])
+        review["film_id"] = str(review["film_id"])
+        review["profile_id"] = str(review["profile_id"])
+
+    return jsonify({"film_id": film_id, "reviews": reviews}), 200
+
+@reviews_bp.route("/<string:film_id>/reviews", methods=["POST"])
 def add_review(film_id):
     """
     Add a new review for a specific film.
@@ -40,27 +38,42 @@ def add_review(film_id):
     """
     data = request.json
 
-    # Controlla che il film esista
-    film = mongo.db.films.find_one({"_id": ObjectId(film_id)})
+    # Controllo se `film_id` è valido
+    try:
+        film_object_id = ObjectId(film_id)
+    except Exception as e:
+        return jsonify({"error": "Invalid Film ID format"}), 400
+
+    # Controllo se il film esiste
+    film = mongo.db.films.find_one({"_id": film_object_id})
     if not film:
         return jsonify({"error": "Film not found"}), 404
 
-    # Controlla che il profilo esista
-    profile = mongo.db.profiles.find_one({"_id": ObjectId(data["profile_id"])})
-    if not profile:
-        return jsonify({"error": "Profile not found"}), 404
+    # Controllo se il profilo utente esiste
+    profile_id = data.get("profile_id")
+    #profile = mongo.db.profiles.find_one({"_id": ObjectId(profile_id)})
+    #if not profile:
+        #return jsonify({"error": "Profile not found"}), 404
 
+    # Creazione della recensione
     review_data = {
-        "film_id": ObjectId(film_id),
-        "profile_id": ObjectId(data["profile_id"]),
-        "text": data["text"]
+        "film_id": film_id,
+        "profile_id": profile_id,
+        "text": data.get("text", "")  # Assicura che "text" sia presente
     }
 
     result = mongo.db.reviews.insert_one(review_data)
+    review_id = str(result.inserted_id)
 
-    return jsonify({"message": "Review added", "review_id": str(result.inserted_id)}), 201
+    # Aggiorna il film aggiungendo il nuovo review_id alla lista
+    mongo.db.films.update_one(
+        {"_id": film_object_id},
+        {"$push": {"reviews": review_id}}
+    )
 
-@reviews_bp.route("/films/<string:film_id>/reviews/<string:review_id>", methods=["DELETE"])
+    return jsonify({"message": "Review added", "review_id": review_id}), 201
+
+@reviews_bp.route("/<string:film_id>/reviews/<string:review_id>", methods=["DELETE"])
 def delete_review(film_id, review_id):
     """
     Delete a specific review from a film.
@@ -73,9 +86,28 @@ def delete_review(film_id, review_id):
         Response: Success or error message.
     """
     try:
-        result = mongo.db.reviews.delete_one({"_id": ObjectId(review_id), "film_id": ObjectId(film_id)})
-        if result.deleted_count > 0:
-            return jsonify({"message": "Review deleted"}), 204
+        # Controllo se gli ID sono validi
+        film_object_id = ObjectId(film_id)
+        review_object_id = ObjectId(review_id)
+    except Exception as e:
+        return jsonify({"error": "Invalid ID format"}), 400
+
+    # Controllo se il film esiste
+    film = mongo.db.films.find_one({"_id": film_object_id})
+    if not film:
+        return jsonify({"error": "Film not found"}), 404
+
+    review = mongo.db.reviews.find_one({"_id": review_object_id})
+    if not review:
         return jsonify({"error": "Review not found"}), 404
-    except:
-        return jsonify({"error": "Invalid Review ID"}), 400
+
+    # Elimina la recensione dal database
+    result = mongo.db.reviews.delete_one({"_id": review_object_id})
+
+    # Rimuovi l'ID della recensione dalla lista reviews del film
+    mongo.db.films.update_one(
+        {"_id": film_object_id},
+        {"$pull": {"reviews": review_id}}
+    )
+
+    return jsonify({"message": "Review deleted"}), 204

@@ -39,12 +39,13 @@ def add_films():
     # Creiamo il film
     film_data = {
         "title": data["title"],
-        "actors": actor_ids,  # Lista di ObjectId degli attori
+        "actors": actor_ids,
         "release_year": data["release_year"],
         "genre": data["genre"],
         "rating": data["rating"],
         "description": data["description"],
-        "image_path": data["image_path"]
+        "image_path": data["image_path"],
+        "reviews": []
     }
 
     result = mongo.db.films.insert_one(film_data)
@@ -105,37 +106,5 @@ def delete_film(film_id):
         if result.deleted_count > 0:
             return "", 204
         return jsonify({"error": "Film not found"}), 404
-    except:
-        return jsonify({"error": "Invalid Film ID"}), 400
-
-
-@films_bp.route("/<string:film_id>/actors", methods=["GET"])
-def get_actors_by_film(film_id):
-    """
-    Retrieve a list of actors associated with a specific film.
-    """
-    try:
-        film = mongo.db.films.find_one({"_id": ObjectId(film_id)})
-        if not film:
-            return jsonify({"error": "Film not found"}), 404
-
-        actor_ids = film.get("actors", [])
-
-        if isinstance(actor_ids, str):
-            actor_ids = [id_.strip() for id_ in actor_ids.split(",")]
-
-        try:
-            actor_ids = [int(actor_id) for actor_id in actor_ids if actor_id.isdigit()]
-        except ValueError:
-            return jsonify({"error": "Invalid actor ID format"}), 400
-
-        if not actor_ids:
-            return jsonify({"actors": []}), 200
-
-        actors = list(mongo.db.actors.find({"actorId": {"$in": actor_ids}}))
-        for actor in actors:
-            actor["_id"] = str(actor["_id"])
-
-        return jsonify({"film_id": film_id, "actors": actors}), 200
     except:
         return jsonify({"error": "Invalid Film ID"}), 400
