@@ -59,8 +59,9 @@ def add_films():
 
     return jsonify({"message": "Film added", "film_id": film_id}), 201
 
+
 @films_bp.route("/<string:film_id>", methods=["GET"])
-def get_film(film_id):
+def get_film_by_id(film_id):
     """
     Retrieve details of a specific film by its MongoDB _id.
     """
