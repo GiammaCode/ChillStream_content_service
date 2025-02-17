@@ -46,24 +46,22 @@ routes and validations.
 #### Create a Content
 ```
 {
- "filmId": 5,
-  "title": "La banda",
-  "actors": "1",
-  "release_year": 2020,
-  "genre": "Action",
-  "rating": 10,
-  "description": "The film tells the story of an alienated... ",
-  "image_path": "/default_film_image.png"
+    "title": "Interstellar",
+    "actors": ["Rossi"],
+    "release_year": 2014,
+    "genre": "Sci-Fi",
+    "rating": 8.6,
+    "description": "A journey beyond space and time.",
+    "image_path": "/images/interstellar.jpg"
 }
 ```
 #### Add a Actor
 ```
 {
-  "actorId": 1,
-  "name": "Bella ",
-  "surname": "Rella",
-  "date_of_birth": "05-03-2000",
-  "films": ""
+    "name": "Gianmaria",
+    "surname": "Rossi
+    ",
+    "date_of_birth": "1969-11-04"
 }
 ```
 
