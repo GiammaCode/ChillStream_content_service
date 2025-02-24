@@ -10,12 +10,11 @@ class Film:
         rating (float): Rating of the film (e.g., IMDb or other rating systems).
     """
 
-    def __init__(self, film_id, title, actors, release_year, genre, rating, description, image_path, reviews=None):
+    def __init__(self, title, actors, release_year, genre, rating, description, image_path, reviews=None):
         """
         Initializes a Film object.
 
         Args:
-            film_id (str or ObjectId, optional): The unique ID of the film from MongoDB. Defaults to None.
             title (str): The title of the film.
             actors (list): A list of actor surnames.
             release_year (int): The year the film was released.
@@ -25,7 +24,6 @@ class Film:
             reviews (list, optional): List of review ObjectIds related to this film.
             image_path (str): The main image of the film.
         """
-        self.film_id = str(film_id) if film_id else None
         self.title = title  # Title of the film
         self.actors = actors  # List or string of actor IDs
         self.release_year = release_year  # Year of release
@@ -43,7 +41,6 @@ class Film:
             dict: A dictionary with the film's details, suitable for JSON serialization.
         """
         return {
-            "_id": self.film_id,
             "title": self.title,
             "actors": self.actors,
             "release_year": self.release_year,
@@ -73,7 +70,6 @@ class Film:
             Film: An instance of the Film class initialized with the provided data.
         """
         return Film(
-            film_id=data.get("_id"),
             title=data.get("title"),
             actors=data.get("actors"),
             release_year=data.get("release_year"),
