@@ -59,8 +59,7 @@ routes and validations.
 ```
 {
     "name": "Gianmaria",
-    "surname": "Rossi
-    ",
+    "surname": "Rossi",
     "date_of_birth": "1969-11-04"
 }
 ```

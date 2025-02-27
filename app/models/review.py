@@ -5,7 +5,7 @@ class Review:
     Represents a user review for a film.
     """
 
-    def __init__(self, film_id, profile_id, text, review_id=None):
+    def __init__(self, film_id, profile_id, nickname,text, review_id=None):
         """
         Initializes a Review instance.
 
@@ -16,6 +16,7 @@ class Review:
             review_id (str, optional): The unique ID of the review (MongoDB _id).
         """
         self.review_id = str(review_id) if review_id else None
+        self.nickname = str(nickname)
         self.film_id = str(film_id)
         self.profile_id = str(profile_id)
         self.text = text
@@ -26,6 +27,7 @@ class Review:
         """
         return {
             "_id": self.review_id,
+            "nickname":self.nickname,
             "film_id": self.film_id,
             "profile_id": self.profile_id,
             "text": self.text
@@ -38,6 +40,7 @@ class Review:
         """
         return Review(
             review_id=data.get("_id"),
+            nickname=data.get("nickname"),
             film_id=data.get("film_id"),
             profile_id=data.get("profile_id"),
             text=data.get("text")
