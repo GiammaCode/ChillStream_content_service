@@ -47,27 +47,44 @@ def get_actors():
 
 
 @actors_bp.route("/", methods=["POST"])
-def add_actor():
+def add_actors():
     """
-    Add a new actor to the database.
+    Add multiple actors to the database.
     """
-    data = request.json
+    data = request.json  # Riceve una lista di attori
 
-    # Controlla se l'attore esiste già con lo stesso cognome
-    existing_actor = mongo.db.actors.find_one({"surname": data["surname"]})
-    if existing_actor:
-        return jsonify({"error": "Actor with this surname already exists"}), 400
+    if not isinstance(data, list):  # Controllo per garantire che sia una lista
+        return jsonify({"error": "Input data must be a list of actors"}), 400
 
-    actor_data = {
-        "name": data["name"],
-        "surname": data["surname"],
-        "date_of_birth": data["date_of_birth"],
-        "films": []  # Lista vuota di film
-    }
+    actors_to_insert = []  # Lista per gli attori validi
 
-    result = mongo.db.actors.insert_one(actor_data)
+    for actor in data:
+        # Controlla se tutti i campi necessari sono presenti
+        if "name" not in actor or "surname" not in actor or "date_of_birth" not in actor:
+            return jsonify({"error": "Missing required fields in one or more records"}), 400
 
-    return jsonify({"message": "Actor added", "actor_id": str(result.inserted_id)}), 201
+        # Controlla se l'attore esiste già nel database
+        existing_actor = db.actors.find_one({"surname": actor["surname"]})
+        if existing_actor:
+            continue  # Salta l'inserimento se l'attore esiste già
+
+        # Crea l'oggetto per il database
+        actors_to_insert.append({
+            "name": actor["name"],
+            "surname": actor["surname"],
+            "date_of_birth": actor["date_of_birth"],
+            "films": []  # Lista vuota di film
+        })
+
+    # Se ci sono attori da inserire, esegui l'inserimento batch
+    if actors_to_insert:
+        result = db.actors.insert_many(actors_to_insert)
+        return jsonify({
+            "message": f"{len(result.inserted_ids)} actors added",
+            "actor_ids": [str(actor_id) for actor_id in result.inserted_ids]
+        }), 201
+    else:
+        return jsonify({"message": "No new actors were added"}), 200
 
 
 @actors_bp.route("/<string:actor_id>", methods=["GET"])

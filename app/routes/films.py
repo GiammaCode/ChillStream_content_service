@@ -24,41 +24,71 @@ def get_films():
 @films_bp.route("/", methods=["POST"])
 def add_films():
     """
-    Add new film(s) to the database.
+    Add multiple films to the database.
     """
-    data = request.json
+    data = request.json  # Riceve una lista di film
 
-    # Trova gli attori basandosi sul cognome e ottieni i loro ObjectId
-    actor_surnames = data.get("actors", [])
-    actor_ids = []
-    for surname in actor_surnames:
-        actor = mongo.db.actors.find_one({"surname": surname})
-        if actor:
-            actor_ids.append(str(actor["_id"]))  # Convertiamo in stringa
+    if not isinstance(data, list):  # Controllo per garantire che sia una lista
+        return jsonify({"error": "Input data must be a list of films"}), 400
 
-    # Creiamo il film
-    film_data = {
-        "title": data["title"],
-        "actors": actor_ids,
-        "release_year": data["release_year"],
-        "genre": data["genre"],
-        "rating": data["rating"],
-        "description": data["description"],
-        "image_path": data["image_path"],
-        "reviews": []
-    }
+    films_to_insert = []  # Lista per i film validi
+    actor_updates = {}  # Dizionario per tracciare gli aggiornamenti sugli attori
 
-    result = mongo.db.films.insert_one(film_data)
-    film_id = str(result.inserted_id)
+    for film in data:
+        # Controllo campi richiesti
+        if not all(k in film for k in ["title", "actors", "release_year", "genre", "rating", "description", "image_path"]):
+            return jsonify({"error": "Missing required fields in one or more records"}), 400
 
-    # Aggiorniamo la lista dei film negli attori
-    for actor_id in actor_ids:
-        mongo.db.actors.update_one(
-            {"_id": ObjectId(actor_id)},
-            {"$push": {"films": film_id}}
-        )
+        # Trova gli attori basandosi sul cognome e ottieni i loro ObjectId
+        actor_surnames = film.get("actors", [])
+        actor_ids = []
 
-    return jsonify({"message": "Film added", "film_id": film_id}), 201
+        for surname in actor_surnames:
+            actor = db.actors.find_one({"surname": surname})
+            if actor:
+                actor_id = str(actor["_id"])
+                actor_ids.append(actor_id)
+
+                # Tracciamo quali attori dovranno essere aggiornati
+                if actor_id not in actor_updates:
+                    actor_updates[actor_id] = []
+
+        # Creiamo il film
+        film_data = {
+            "title": film["title"],
+            "actors": actor_ids,
+            "release_year": film["release_year"],
+            "genre": film["genre"],
+            "rating": film["rating"],
+            "description": film["description"],
+            "image_path": film["image_path"],
+            "reviews": []
+        }
+        films_to_insert.append(film_data)
+
+    # Inseriamo tutti i film in un'unica operazione se ce ne sono
+    if films_to_insert:
+        result = db.films.insert_many(films_to_insert)
+        inserted_ids = [str(film_id) for film_id in result.inserted_ids]
+
+        # Aggiorniamo gli attori per collegare i nuovi film
+        for film_data, film_id in zip(films_to_insert, inserted_ids):
+            for actor_id in film_data["actors"]:
+                actor_updates[actor_id].append(film_id)
+
+        # Eseguiamo gli aggiornamenti sugli attori in batch
+        for actor_id, film_ids in actor_updates.items():
+            db.actors.update_one(
+                {"_id": ObjectId(actor_id)},
+                {"$push": {"films": {"$each": film_ids}}}
+            )
+
+        return jsonify({
+            "message": f"{len(inserted_ids)} films added",
+            "film_ids": inserted_ids
+        }), 201
+
+    return jsonify({"message": "No films were added"}), 200
 
 
 @films_bp.route("/<string:film_id>", methods=["GET"])
