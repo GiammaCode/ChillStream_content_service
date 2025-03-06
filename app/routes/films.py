@@ -44,7 +44,7 @@ def add_films():
         actor_ids = []
 
         for surname in actor_surnames:
-            actor = db.actors.find_one({"surname": surname})
+            actor = mongo.db.actors.find_one({"surname": surname})
             if actor:
                 actor_id = str(actor["_id"])
                 actor_ids.append(actor_id)
@@ -68,7 +68,7 @@ def add_films():
 
     # Inseriamo tutti i film in un'unica operazione se ce ne sono
     if films_to_insert:
-        result = db.films.insert_many(films_to_insert)
+        result = mongo.db.films.insert_many(films_to_insert)
         inserted_ids = [str(film_id) for film_id in result.inserted_ids]
 
         # Aggiorniamo gli attori per collegare i nuovi film
@@ -78,7 +78,7 @@ def add_films():
 
         # Eseguiamo gli aggiornamenti sugli attori in batch
         for actor_id, film_ids in actor_updates.items():
-            db.actors.update_one(
+            mongo.db.actors.update_one(
                 {"_id": ObjectId(actor_id)},
                 {"$push": {"films": {"$each": film_ids}}}
             )

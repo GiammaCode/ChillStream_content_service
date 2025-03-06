@@ -64,7 +64,7 @@ def add_actors():
             return jsonify({"error": "Missing required fields in one or more records"}), 400
 
         # Controlla se l'attore esiste già nel database
-        existing_actor = db.actors.find_one({"surname": actor["surname"]})
+        existing_actor = mongo.db.actors.find_one({"surname": actor["surname"]})
         if existing_actor:
             continue  # Salta l'inserimento se l'attore esiste già
 
@@ -78,7 +78,7 @@ def add_actors():
 
     # Se ci sono attori da inserire, esegui l'inserimento batch
     if actors_to_insert:
-        result = db.actors.insert_many(actors_to_insert)
+        result = mongo.db.actors.insert_many(actors_to_insert)
         return jsonify({
             "message": f"{len(result.inserted_ids)} actors added",
             "actor_ids": [str(actor_id) for actor_id in result.inserted_ids]
