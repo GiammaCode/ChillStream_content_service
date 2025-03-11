@@ -10,7 +10,7 @@ class Film:
         rating (float): Rating of the film (e.g., IMDb or other rating systems).
     """
 
-    def __init__(self, title, actors, release_year, genre, rating, description, image_path, reviews=None):
+    def __init__(self, title, actors, release_year, genre, rating, description, image_path,trailer_path ,reviews=None):
         """
         Initializes a Film object.
 
@@ -31,6 +31,7 @@ class Film:
         self.rating = rating  # Film's rating
         self.description = description
         self.image_path = image_path
+        self.trailer_path = trailer_path
         self.reviews = reviews if reviews is not None else []
 
     def to_dict(self):
@@ -48,6 +49,7 @@ class Film:
             "rating": self.rating,
             "description": self.description,
             "image_path": self.image_path,
+            "trailer_path": self.trailer_path,
             "reviews": self.reviews
         }
 
@@ -77,5 +79,6 @@ class Film:
             rating=data.get("rating"),
             description=data.get("description"),
             image_path=data.get("image_path"),
+            trailer_path=data.get("trailer_path"),
             reviews=data.get("reviews", [])
         )

@@ -36,7 +36,7 @@ def add_films():
 
     for film in data:
         # Controllo campi richiesti
-        if not all(k in film for k in ["title", "actors", "release_year", "genre", "rating", "description", "image_path"]):
+        if not all(k in film for k in ["title", "actors", "release_year", "genre", "rating", "description", "image_path","trailer_path"]):
             return jsonify({"error": "Missing required fields in one or more records"}), 400
 
         # Trova gli attori basandosi sul cognome e ottieni i loro ObjectId
@@ -62,6 +62,7 @@ def add_films():
             "rating": film["rating"],
             "description": film["description"],
             "image_path": film["image_path"],
+            "trailer_path":film["trailer_path"],
             "reviews": []
         }
         films_to_insert.append(film_data)

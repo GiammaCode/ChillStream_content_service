@@ -52,7 +52,9 @@ routes and validations.
     "genre": "Sci-Fi",
     "rating": 8.6,
     "description": "A journey beyond space and time.",
-    "image_path": "/images/interstellar.jpg"
+    "image_path": "/images/interstellar.jpg",
+    "trailer_path": "jnXIXInJU"
+    
 }
 ```
 #### Add a Actor
