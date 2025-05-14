@@ -109,22 +109,33 @@ def get_film_by_id(film_id):
 
 @films_bp.route("/<string:film_id>", methods=["PUT"])
 def update_film(film_id):
-    """
-    Update details of a specific film by its MongoDB _id.
-    """
     try:
         data = request.json
+
+        # Conversione attori se sono cognomi
+        actor_surnames = data.get("actors", [])
+        actor_ids = []
+        for surname in actor_surnames:
+            actor = mongo.db.actors.find_one({"surname": surname})
+            if actor:
+                actor_ids.append(str(actor["_id"]))
+
+        data["actors"] = actor_ids  # Sovrascrivi con gli ID
+
         updated_film = mongo.db.films.find_one_and_update(
             {"_id": ObjectId(film_id)},
             {"$set": data},
             return_document=True
         )
+
         if updated_film:
             updated_film["_id"] = str(updated_film["_id"])
             return jsonify(updated_film), 200
         return jsonify({"error": "Film not found"}), 404
+
     except:
         return jsonify({"error": "Invalid Film ID"}), 400
+
 
 
 @films_bp.route("/<string:film_id>", methods=["DELETE"])
