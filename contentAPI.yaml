@@ -1,393 +1,248 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
-  title: Content Management API
-  description: API for managing films and actors, including CRUD operations.
+  title: ChillStream Content Service API
   version: 1.0.0
+  description: REST API per la gestione di attori, film e recensioni.
+
 servers:
   - url: http://localhost:8080
-    description: Local development server for films and actors
 
 paths:
-  /films/:
+  /actors:
     get:
-      summary: Retrieve all films
+      summary: Recupera tutti gli attori
       responses:
-        '200':
-          description: A list of all films.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Film'
-              example:
-                - filmId: 1
-                  title: "Inception"
-                  actors: [101, 102]
-                  release_year: 2010
-                  genre: "Sci-Fi"
-                  rating: 8.8
-                  description: "A thief who steals corporate secrets through dream-sharing technology."
-                  image_path: "/images/inception.jpg"
-                - filmId: 2
-                  title: "The Dark Knight"
-                  actors: [103, 104]
-                  release_year: 2008
-                  genre: "Action"
-                  rating: 9.0
-                  description: "Batman faces the Joker in a battle for Gotham."
-                  image_path: "/images/dark_knight.jpg"
-
+        200:
+          description: Lista di attori
     post:
-      summary: Add new film(s)
+      summary: Aggiunge più attori
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              oneOf:
-                - $ref: '#/components/schemas/Film'
-                - type: array
-                  items:
-                    $ref: '#/components/schemas/Film'
-            example:
-              - filmId: 3
-                title: "Interstellar"
-                actors: [105, 106]
-                release_year: 2014
-                genre: "Sci-Fi"
-                rating: 8.6
-                description: "A team of explorers travel through a wormhole in space."
-                image_path: "/images/interstellar.jpg"
+              type: array
+              items:
+                $ref: '#/components/schemas/ActorInput'
       responses:
-        '201':
-          description: Film(s) added successfully.
-        '400':
-          description: Validation error for the provided film(s).
+        201:
+          description: Attori aggiunti
 
-  /films/{filmId}:
+  /actors/{actor_id}:
     get:
-      summary: Retrieve a film by ID
+      summary: Ottiene un attore tramite ID
       parameters:
-        - name: filmId
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/actor_id'
       responses:
-        '200':
-          description: Film details retrieved successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Film'
-              example:
-                filmId: 1
-                title: "Inception"
-                actors: [101, 102]
-                release_year: 2010
-                genre: "Sci-Fi"
-                rating: 8.8
-                description: "A thief who steals corporate secrets through dream-sharing technology."
-                image_path: "/images/inception.jpg"
-        '404':
-          description: Film not found.
-
+        200:
+          description: Dettaglio attore
+        404:
+          description: Attore non trovato
     put:
-      summary: Update a film by ID
+      summary: Aggiorna un attore
       parameters:
-        - name: filmId
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/actor_id'
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Film'
-            example:
-              filmId: 1
-              title: "Inception (Updated)"
-              actors: [101, 102]
-              release_year: 2010
-              genre: "Sci-Fi"
-              rating: 9.0
-              description: "An updated description of Inception."
-              image_path: "/images/inception_updated.jpg"
+              type: object
       responses:
-        '200':
-          description: Film updated successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Film'
-        '404':
-          description: Film not found.
-
+        200:
+          description: Attore aggiornato
     delete:
-      summary: Delete a film by ID
+      summary: Elimina un attore
       parameters:
-        - name: filmId
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/actor_id'
       responses:
-        '204':
-          description: Film deleted successfully.
-        '404':
-          description: Film ID not found.
+        204:
+          description: Attore eliminato
 
-  /films/{filmId}/actors:
+  /actors/{actor_id}/films:
     get:
-      summary: Retrieve details actors for a specific film
+      summary: Ottiene i film associati a un attore
       parameters:
-        - name: filmId
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/actor_id'
       responses:
-        '200':
-          description: Actors associated with the film.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  filmId:
-                    type: integer
-                  actors:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Actor'
-              example:
-                filmId: 1
-                actors:
-                  - actorId: 101
-                    name: "Leonardo"
-                    surname: "DiCaprio"
-                  - actorId: 102
-                    name: "Joseph"
-                    surname: "Gordon-Levitt"
-        '404':
-          description: Film not found.
+        200:
+          description: Lista di film
 
-  /actors/:
+  /films:
     get:
-      summary: Retrieve all actors
+      summary: Recupera tutti i film
       responses:
-        '200':
-          description: A list of all actors.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Actor'
-              example:
-                - actorId: 1
-                  name: "Leonardo"
-                  surname: "DiCaprio"
-                  date_of_birth: "1974-11-11"
-                  films: "1, 2, 3"
-                - actorId: 2
-                  name: "Brad"
-                  surname: "Pitt"
-                  date_of_birth: "1963-12-18"
-                  films: "4, 5, 6"
-
+        200:
+          description: Lista di film
     post:
-      summary: Add a new actor or multiple actors
+      summary: Aggiunge più film
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              oneOf:
-                - $ref: '#/components/schemas/Actor'
-                - type: array
-                  items:
-                    $ref: '#/components/schemas/Actor'
-            example:
-              - actorId: 3
-                name: "Robert"
-                surname: "Downey Jr."
-                date_of_birth: "1965-04-04"
-                films: "7, 8, 9"
+              type: array
+              items:
+                $ref: '#/components/schemas/FilmInput'
       responses:
-        '201':
-          description: Actor(s) added successfully.
-        '400':
-          description: Validation error for the provided actor(s).
+        201:
+          description: Film aggiunti
 
-  /actors/{actorId}:
+  /films/{film_id}:
     get:
-      summary: Retrieve an actor by ID
+      summary: Ottiene un film tramite ID
       parameters:
-        - name: actorId
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/film_id'
       responses:
-        '200':
-          description: Actor details retrieved successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Actor'
-              example:
-                actorId: 1
-                name: "Leonardo"
-                surname: "DiCaprio"
-                date_of_birth: "1974-11-11"
-                films: "1, 2, 3"
-        '404':
-          description: Actor not found.
-
+        200:
+          description: Dettaglio film
     put:
-      summary: Update an actor by ID
+      summary: Aggiorna un film
       parameters:
-        - name: actorId
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/film_id'
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Actor'
-            example:
-              actorId: 1
-              name: "Leonardo"
-              surname: "DiCaprio"
-              date_of_birth: "1974-11-11"
-              films: "1, 2, 4"
+              type: object
       responses:
-        '200':
-          description: Actor updated successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Actor'
-        '404':
-          description: Actor not found.
-
+        200:
+          description: Film aggiornato
     delete:
-      summary: Delete an actor by ID
+      summary: Elimina un film
       parameters:
-        - name: actorId
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/film_id'
       responses:
-        '204':
-          description: Actor deleted successfully.
-        '404':
-          description: Actor not found.
+        204:
+          description: Film eliminato
 
-  /actors/{actorId}/films:
+  /films/{film_id}/reviews:
     get:
-      summary: Retrieve details films associated with an actor
+      summary: Ottiene tutte le recensioni di un film
       parameters:
-        - name: actorId
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/film_id'
       responses:
-        '200':
-          description: List of films associated with the actor.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  actorId:
-                    type: integer
-                  films:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Film'
-              example:
-                actorId: 1
-                films:
-                  - filmId: 1
-                    title: "Inception"
-                    release_year: 2010
-                    genre: "Sci-Fi"
-                    rating: 8.8
-                  - filmId: 2
-                    title: "The Revenant"
-                    release_year: 2015
-                    genre: "Adventure"
-                    rating: 8.0
-        '400':
-          description: Invalid film ID format.
-        '404':
-          description: Actor not found.
+        200:
+          description: Lista di recensioni
+    post:
+      summary: Aggiunge una recensione a un film
+      parameters:
+        - $ref: '#/components/parameters/film_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewInput'
+      responses:
+        201:
+          description: Recensione aggiunta
+
+  /films/{film_id}/reviews/{review_id}:
+    get:
+      summary: Ottiene una recensione specifica
+      parameters:
+        - $ref: '#/components/parameters/film_id'
+        - $ref: '#/components/parameters/review_id'
+      responses:
+        200:
+          description: Dettaglio recensione
+    put:
+      summary: Aggiorna una recensione
+      parameters:
+        - $ref: '#/components/parameters/film_id'
+        - $ref: '#/components/parameters/review_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          description: Recensione aggiornata
+    delete:
+      summary: Elimina una recensione
+      parameters:
+        - $ref: '#/components/parameters/film_id'
+        - $ref: '#/components/parameters/review_id'
+      responses:
+        204:
+          description: Recensione eliminata
 
 components:
-  schemas:
-    Film:
-      type: object
-      properties:
-        filmId:
-          type: integer
-        title:
-          type: string
-        actors:
-          oneOf:
-            - type: array
-              items:
-                type: integer
-            - type: string
-          description: "list of actorId from actor component."
-        release_year:
-          type: integer
-        genre:
-          type: string
-        rating:
-          type: number
-          format: float
-        description:
-          type: string
-        image_path:
-          type: string
-      example:
-        filmId: 1
-        title: "Inception"
-        actors: [101, 102]
-        release_year: 2010
-        genre: "Sci-Fi"
-        rating: 8.8
-        description: "A thief who steals corporate secrets through dream-sharing technology."
-        image_path: "/images/inception.jpg"
+  parameters:
+    actor_id:
+      name: actor_id
+      in: path
+      required: true
+      schema:
+        type: string
+    film_id:
+      name: film_id
+      in: path
+      required: true
+      schema:
+        type: string
+    review_id:
+      name: review_id
+      in: path
+      required: true
+      schema:
+        type: string
 
-    Actor:
+  schemas:
+    ActorInput:
       type: object
+      required:
+        - name
+        - surname
+        - date_of_birth
       properties:
-        actorId:
-          type: integer
         name:
           type: string
         surname:
           type: string
         date_of_birth:
           type: string
-          format: date
-        films:
+
+    FilmInput:
+      type: object
+      required:
+        - title
+        - actors
+        - release_year
+        - genre
+        - rating
+        - description
+        - image_path
+        - trailer_path
+      properties:
+        title:
           type: string
-          description: "list of filmID from the film component."
-      example:
-        actorId: 1
-        name: "Leonardo"
-        surname: "DiCaprio"
-        date_of_birth: "1974-11-11"
-        films: "1, 2, 3"
+        actors:
+          type: array
+          items:
+            type: string
+        release_year:
+          type: string
+        genre:
+          type: string
+        rating:
+          type: string
+        description:
+          type: string
+        image_path:
+          type: string
+        trailer_path:
+          type: string
+
+    ReviewInput:
+      type: object
+      required:
+        - profile_id
+        - nickname
+        - text
+      properties:
+        profile_id:
+          type: string
+        nickname:
+          type: string
+        text:
+          type: string

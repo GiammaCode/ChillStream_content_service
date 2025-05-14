@@ -17,7 +17,7 @@ def get_films():
     """
     films = list(mongo.db.films.find())
     for film in films:
-        film["_id"] = str(film["_id"])  # Convert ObjectId to string for serialization
+        film["_id"] = str(film["_id"])
     return jsonify(films), 200
 
 
@@ -26,20 +26,17 @@ def add_films():
     """
     Add multiple films to the database.
     """
-    data = request.json  # Riceve una lista di film
-
-    if not isinstance(data, list):  # Controllo per garantire che sia una lista
+    data = request.json
+    if not isinstance(data, list):
         return jsonify({"error": "Input data must be a list of films"}), 400
 
-    films_to_insert = []  # Lista per i film validi
-    actor_updates = {}  # Dizionario per tracciare gli aggiornamenti sugli attori
+    films_to_insert = []
+    actor_updates = {}
 
     for film in data:
-        # Controllo campi richiesti
         if not all(k in film for k in ["title", "actors", "release_year", "genre", "rating", "description", "image_path","trailer_path"]):
             return jsonify({"error": "Missing required fields in one or more records"}), 400
 
-        # Trova gli attori basandosi sul cognome e ottieni i loro ObjectId
         actor_surnames = film.get("actors", [])
         actor_ids = []
 
@@ -49,11 +46,9 @@ def add_films():
                 actor_id = str(actor["_id"])
                 actor_ids.append(actor_id)
 
-                # Tracciamo quali attori dovranno essere aggiornati
                 if actor_id not in actor_updates:
                     actor_updates[actor_id] = []
 
-        # Creiamo il film
         film_data = {
             "title": film["title"],
             "actors": actor_ids,
@@ -67,17 +62,14 @@ def add_films():
         }
         films_to_insert.append(film_data)
 
-    # Inseriamo tutti i film in un'unica operazione se ce ne sono
     if films_to_insert:
         result = mongo.db.films.insert_many(films_to_insert)
         inserted_ids = [str(film_id) for film_id in result.inserted_ids]
 
-        # Aggiorniamo gli attori per collegare i nuovi film
         for film_data, film_id in zip(films_to_insert, inserted_ids):
             for actor_id in film_data["actors"]:
                 actor_updates[actor_id].append(film_id)
 
-        # Eseguiamo gli aggiornamenti sugli attori in batch
         for actor_id, film_ids in actor_updates.items():
             mongo.db.actors.update_one(
                 {"_id": ObjectId(actor_id)},
@@ -111,8 +103,6 @@ def get_film_by_id(film_id):
 def update_film(film_id):
     try:
         data = request.json
-
-        # Conversione attori se sono cognomi
         actor_surnames = data.get("actors", [])
         actor_ids = []
         for surname in actor_surnames:
@@ -120,8 +110,7 @@ def update_film(film_id):
             if actor:
                 actor_ids.append(str(actor["_id"]))
 
-        data["actors"] = actor_ids  # Sovrascrivi con gli ID
-
+        data["actors"] = actor_ids
         updated_film = mongo.db.films.find_one_and_update(
             {"_id": ObjectId(film_id)},
             {"$set": data},

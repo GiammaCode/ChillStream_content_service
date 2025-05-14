@@ -42,7 +42,7 @@ def get_actors():
     """
     actors = list(mongo.db.actors.find())
     for actor in actors:
-        actor["_id"] = str(actor["_id"])  # Convert ObjectId to string for serialization
+        actor["_id"] = str(actor["_id"])
     return jsonify(actors), 200
 
 
@@ -51,32 +51,27 @@ def add_actors():
     """
     Add multiple actors to the database.
     """
-    data = request.json  # Riceve una lista di attori
-
-    if not isinstance(data, list):  # Controllo per garantire che sia una lista
+    data = request.json
+    if not isinstance(data, list):
         return jsonify({"error": "Input data must be a list of actors"}), 400
 
-    actors_to_insert = []  # Lista per gli attori validi
-
+    actors_to_insert = []
     for actor in data:
-        # Controlla se tutti i campi necessari sono presenti
+
         if "name" not in actor or "surname" not in actor or "date_of_birth" not in actor:
             return jsonify({"error": "Missing required fields in one or more records"}), 400
 
-        # Controlla se l'attore esiste già nel database
         existing_actor = mongo.db.actors.find_one({"surname": actor["surname"]})
         if existing_actor:
-            continue  # Salta l'inserimento se l'attore esiste già
+            continue
 
-        # Crea l'oggetto per il database
         actors_to_insert.append({
             "name": actor["name"],
             "surname": actor["surname"],
             "date_of_birth": actor["date_of_birth"],
-            "films": []  # Lista vuota di film
+            "films": []
         })
 
-    # Se ci sono attori da inserire, esegui l'inserimento batch
     if actors_to_insert:
         result = mongo.db.actors.insert_many(actors_to_insert)
         return jsonify({
@@ -172,29 +167,23 @@ def get_films_by_actor(actor_id):
             - 404: Error message if the actor is not found.
     """
     try:
-        # Converti actor_id in ObjectId
         actor_object_id = ObjectId(actor_id)
     except:
         return jsonify({"error": "Invalid Actor ID format"}), 400
 
-    # Cerca l'attore nel database
     actor = mongo.db.actors.find_one({"_id": actor_object_id})
     if not actor:
         return jsonify({"error": "Actor not found"}), 404
 
-    # Estrai la lista dei film associati all'attore
     film_ids = actor.get("films", [])
 
-    # Assicurati che `film_ids` sia una lista di ObjectId validi
     if not isinstance(film_ids, list):
         return jsonify({"error": "Invalid film list format"}), 400
 
     try:
-        # Converti gli ID in ObjectId e cerca i film nel database
         film_object_ids = [ObjectId(film_id) for film_id in film_ids]
         films = list(mongo.db.films.find({"_id": {"$in": film_object_ids}}))
 
-        # Converti gli ObjectId in stringa per la serializzazione JSON
         for film in films:
             film["_id"] = str(film["_id"])
 
